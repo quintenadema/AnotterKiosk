@@ -12,7 +12,7 @@ jobs:
     runs-on: [ubuntu-24.04]
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Also updated this
       - name: Install dependencies
         run: |
           sudo apt update -qq
@@ -24,8 +24,8 @@ jobs:
       
       # Upload artifacts for ALL builds (testing)
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        if: always()  # Upload even if not a tag
+        uses: actions/upload-artifact@v4  # Changed to v4
+        if: always()
         with:
           name: x86-build
           path: |
@@ -49,7 +49,7 @@ jobs:
     runs-on: [ubuntu-24.04-arm]
     steps:
       - name: Check out repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4  # Also updated this
       - name: Install dependencies
         run: |
           sudo apt update -qq
@@ -64,8 +64,8 @@ jobs:
       
       # Upload artifacts for ALL builds (testing)
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        if: always()  # Upload even if not a tag
+        uses: actions/upload-artifact@v4  # Changed to v4
+        if: always()
         with:
           name: raspberry-pi-builds
           path: |
