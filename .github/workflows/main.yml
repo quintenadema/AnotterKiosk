@@ -1,23 +1,18 @@
 name: CI
-
 on:
   create: { }
   pull_request: { }
-
+  push:
+    branches: ['**']
+  workflow_dispatch:  # Manual trigger
 permissions:
   contents: write
-
 jobs:
   x86:
     runs-on: [ubuntu-24.04]
-
-    outputs:
-      pkgfile: ${{ steps.pkgname.outputs.pkgfile }}
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
-
       - name: Install dependencies
         run: |
           sudo apt update -qq
@@ -26,7 +21,19 @@ jobs:
       - name: Build firmware
         run: |
           ./build_x86.sh
-
+      
+      # Upload artifacts for ALL builds (testing)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        if: always()  # Upload even if not a tag
+        with:
+          name: x86-build
+          path: |
+            ./anotterkiosk-*
+            ./version-info
+          retention-days: 7
+      
+      # Only create releases for tags
       - name: Release build artifacts
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
@@ -37,17 +44,12 @@ jobs:
             ./anotterkiosk-*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          
   raspberrypi:
     runs-on: [ubuntu-24.04-arm]
-
-    outputs:
-      pkgfile: ${{ steps.pkgname.outputs.pkgfile }}
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v2
-
       - name: Install dependencies
         run: |
           sudo apt update -qq
@@ -56,11 +58,22 @@ jobs:
       - name: Build armhf (Raspberry Pi 1/2/Zero) firmware
         run: |
           ./build_raspberry_pi.sh "https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2025-10-02/2025-10-01-raspios-trixie-armhf-lite.img.xz" "22a02428e7de5345ccf865fa3e2fe06f3aa56afdde98bc23d9d91e83320b3511" "armhf-raspberrypi"
-
       - name: Build arm64 (Raspberry Pi Zero 2/3/4/5+) firmware
         run: |
           ./build_raspberry_pi.sh "https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2025-10-02/2025-10-01-raspios-trixie-arm64-lite.img.xz" "79146135607ffe8acac94e5ff501de6fc49583117de5ad08c45a32c73ae2a027" "arm64-raspberrypi"
-
+      
+      # Upload artifacts for ALL builds (testing)
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        if: always()  # Upload even if not a tag
+        with:
+          name: raspberry-pi-builds
+          path: |
+            ./anotterkiosk-*
+            ./version-info
+          retention-days: 7
+      
+      # Only create releases for tags
       - name: Release build artifacts
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
