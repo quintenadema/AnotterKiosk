@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 INI_FILE="/boot/firmware/kioskbrowser.ini"
 
@@ -7,7 +7,7 @@ ini_get() {
 }
 
 ini_list_sections() {
-	local pattern="$1"
+	pattern="$1"
 	php -r '
 		$ini = parse_ini_file($argv[1], true, INI_SCANNER_NORMAL);
 		$pattern = $argv[2];
@@ -26,6 +26,19 @@ ini_list_sections() {
 
 first_connected_output() {
 	xrandr -q | awk '/ connected/{ print $1; exit }'
+}
+
+connected_output_by_index() {
+	index="$1"
+	xrandr -q | awk -v idx="${index}" '
+	/ connected/ {
+		if (i == idx) {
+			print $1;
+			exit;
+		}
+		i++;
+	}
+	'
 }
 
 # display splash screen as Openbox background
@@ -64,18 +77,17 @@ then
 fi
 
 # multi-screen setup (if specified)
-mapfile -t SCREEN_SECTIONS < <(ini_list_sections '^screen[0-9]+$')
-if [ "${#SCREEN_SECTIONS[@]}" -gt 0 ]
+SCREEN_SECTIONS=$(ini_list_sections '^screen[0-9]+$')
+if [ -n "${SCREEN_SECTIONS}" ]
 then
-	mapfile -t CONNECTED_OUTPUTS < <(xrandr -q | awk '/ connected/{ print $1 }')
 	OUTPUT_INDEX=0
 
-	for SECTION in "${SCREEN_SECTIONS[@]}"
+	for SECTION in ${SCREEN_SECTIONS}
 	do
 		OUTPUT=$(ini_get "${SECTION}" output)
 		if [ -z "${OUTPUT}" ]
 		then
-			OUTPUT="${CONNECTED_OUTPUTS[${OUTPUT_INDEX}]}"
+			OUTPUT=$(connected_output_by_index "${OUTPUT_INDEX}")
 			OUTPUT_INDEX=$((OUTPUT_INDEX + 1))
 		fi
 
@@ -99,21 +111,21 @@ then
 
 		if [ -n "${POSITION}" ]
 		then
-			POSITION="${POSITION//,/x}"
+			POSITION=$(printf '%s' "${POSITION}" | tr ',' 'x')
 		fi
 
-		XRANDR_CMD=(xrandr --output "${OUTPUT}" --auto)
+		set -- xrandr --output "${OUTPUT}" --auto
 		if [ -n "${POSITION}" ]
 		then
-			XRANDR_CMD+=(--pos "${POSITION}")
+			set -- "$@" --pos "${POSITION}"
 		fi
 		if [ -n "${ROTATE}" ]
 		then
-			XRANDR_CMD+=(--rotate "${ROTATE}")
+			set -- "$@" --rotate "${ROTATE}"
 		fi
 		if [ "${PRIMARY}" = "1" ]
 		then
-			XRANDR_CMD+=(--primary)
+			set -- "$@" --primary
 		fi
 
 		if [ -n "${CUSTOM_MODELINE}" ]
@@ -121,13 +133,13 @@ then
 			MODE_NAME="custom-${SECTION}"
 			xrandr --newmode "${MODE_NAME}" ${CUSTOM_MODELINE} 2>/dev/null || true
 			xrandr --addmode "${OUTPUT}" "${MODE_NAME}" 2>/dev/null || true
-			XRANDR_CMD+=(--mode "${MODE_NAME}")
+			set -- "$@" --mode "${MODE_NAME}"
 		elif [ -n "${MODE}" ]
 		then
-			XRANDR_CMD+=(--mode "${MODE}")
+			set -- "$@" --mode "${MODE}"
 		fi
 
-		"${XRANDR_CMD[@]}"
+		"$@"
 	done
 else
 	# set a custom resolution (if specified)
@@ -217,10 +229,9 @@ else
 fi
 
 browser_setting() {
-	local section="$1"
-	local key="$2"
-	local default="$3"
-	local value
+	section="$1"
+	key="$2"
+	default="$3"
 	value=$(ini_get "${section}" "${key}")
 	if [ -z "${value}" ]
 	then
@@ -230,14 +241,14 @@ browser_setting() {
 }
 
 # start chromium (single or multi-instance)
-mapfile -t BROWSER_SECTIONS < <(ini_list_sections '^browser[0-9]+$')
-if [ "${#BROWSER_SECTIONS[@]}" -eq 0 ]
+BROWSER_SECTIONS=$(ini_list_sections '^browser[0-9]+$')
+if [ -z "${BROWSER_SECTIONS}" ]
 then
-	BROWSER_SECTIONS=("browser")
+	BROWSER_SECTIONS="browser"
 fi
 
 INSTANCE_INDEX=0
-for SECTION in "${BROWSER_SECTIONS[@]}"
+for SECTION in ${BROWSER_SECTIONS}
 do
 	INSTANCE_INDEX=$((INSTANCE_INDEX + 1))
 	URL=$(ini_get "${SECTION}" url)
@@ -258,12 +269,12 @@ do
 	CHROME_WINDOW_FLAGS=""
 	if [ -n "${WINDOW_POSITION}" ]
 	then
-		WINDOW_POSITION="${WINDOW_POSITION//x/,}"
+		WINDOW_POSITION=$(printf '%s' "${WINDOW_POSITION}" | tr 'x' ',')
 		CHROME_WINDOW_FLAGS="${CHROME_WINDOW_FLAGS} --window-position=${WINDOW_POSITION}"
 	fi
 	if [ -n "${WINDOW_SIZE}" ]
 	then
-		WINDOW_SIZE="${WINDOW_SIZE//x/,}"
+		WINDOW_SIZE=$(printf '%s' "${WINDOW_SIZE}" | tr 'x' ',')
 		CHROME_WINDOW_FLAGS="${CHROME_WINDOW_FLAGS} --window-size=${WINDOW_SIZE}"
 	fi
 
