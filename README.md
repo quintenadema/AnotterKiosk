@@ -100,6 +100,45 @@ Adding your own SSH keys can be done by creating a authorized_keys file.
 If you want to use the autossh tunneling features, copy an SSH private key as either "id_rsa" or "id_ed25519".  
 The splash screen can be customized by replacing (or entirely removing) `splash.png`.
 
+## Multi-screen & multi-browser setup
+You can configure multiple outputs (including rotated displays) and start multiple Chromium instances
+with per-instance URLs and window positions. This is configured in `kioskbrowser.ini` using
+`[screen1]`, `[screen2]`, ... and `[browser1]`, `[browser2]`, ... sections.
+
+Example (two screens, second one rotated):
+```ini
+[screen1]
+output = "HDMI-1"
+position = "0x0"
+mode = "1920x1080"
+rotate = "normal"
+primary = 1
+
+[screen2]
+output = "DP-1"
+position = "1920x0"
+mode = "1080x1920"
+rotate = "right"
+
+[browser1]
+url="https://example.com/"
+window_position="0,0"
+window_size="1920,1080"
+
+[browser2]
+url="https://example.org/"
+window_position="1920,0"
+window_size="1080,1920"
+```
+
+Notes:
+- If any `[screenN]` sections exist, the legacy single-screen settings in `[screen]` (like `rotate_screen`)
+  are ignored, except for `blanking_interval`.
+- If `output` is omitted in `[screenN]`, connected outputs are assigned in order.
+- To discover output names (`HDMI-1`, `DP-1`, etc.), run `xrandr` via SSH.
+- If any `[browserN]` sections exist, the single `[browser]` url is ignored, but the other browser settings
+  (`darkmode`, etc.) still apply to all instances. `cache_clear_interval` can be set per `[browserN]`.
+
 ## HTTP watchdog functionality
 Browsers are complex, networks are unstable and software can be buggy.   
 In order to get the highest reliability possible, self-hosted websites can be modified to include a heartbeat/watchdog functionality.
