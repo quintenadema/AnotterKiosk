@@ -122,13 +122,11 @@ rotate = "right"
 
 [browser1]
 url="https://example.com/"
-window_position="0,0"
-window_size="1920,1080"
+output="HDMI-1"
 
 [browser2]
 url="https://example.org/"
-window_position="1920,0"
-window_size="1080,1920"
+output="HDMI-2"
 ```
 
 Notes:
@@ -138,6 +136,7 @@ Notes:
 - To discover output names (`HDMI-1`, `DP-1`, etc.), run `xrandr` via SSH.
 - If any `[browserN]` sections exist, the single `[browser]` url is ignored, but the other browser settings
   (`darkmode`, etc.) still apply to all instances. `cache_clear_interval` can be set per `[browserN]`.
+- For `[browserN]`, `output` can be used instead of pixel math. `window_position`/`window_size` remain optional overrides.
 
 ## HTTP watchdog functionality
 Browsers are complex, networks are unstable and software can be buggy.   

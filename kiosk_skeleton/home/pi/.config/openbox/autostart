@@ -41,6 +41,20 @@ connected_output_by_index() {
 	'
 }
 
+output_geometry() {
+	output="$1"
+	xrandr -q | awk -v output="${output}" '
+	$1 == output && $2 == "connected" {
+		for (i = 3; i <= NF; i++) {
+			if ($i ~ /^[0-9]+x[0-9]+\+[0-9]+\+[0-9]+$/) {
+				print $i;
+				exit;
+			}
+		}
+	}
+	'
+}
+
 # display splash screen as Openbox background
 if [ -f /boot/firmware/splash.png ]; then
    feh --bg-center /boot/firmware/splash.png
@@ -260,7 +274,29 @@ do
 
 	WINDOW_POSITION=$(ini_get "${SECTION}" window_position)
 	WINDOW_SIZE=$(ini_get "${SECTION}" window_size)
+	TARGET_OUTPUT=$(ini_get "${SECTION}" output)
 	USER_DATA_DIR=$(ini_get "${SECTION}" user_data_dir)
+
+	if [ -n "${TARGET_OUTPUT}" ]
+	then
+		OUTPUT_GEOMETRY=$(output_geometry "${TARGET_OUTPUT}")
+		if [ -z "${OUTPUT_GEOMETRY}" ]
+		then
+			echo "kiosk: ${SECTION} output ${TARGET_OUTPUT} is not connected, skipping"
+			continue
+		fi
+
+		# If output is set, auto-place and auto-size the window unless overridden explicitly.
+		if [ -z "${WINDOW_POSITION}" ]
+		then
+			WINDOW_POSITION=$(printf '%s\n' "${OUTPUT_GEOMETRY}" | awk -F'[x+]' '{print $3","$4}')
+		fi
+		if [ -z "${WINDOW_SIZE}" ]
+		then
+			WINDOW_SIZE=$(printf '%s\n' "${OUTPUT_GEOMETRY}" | awk -F'[x+]' '{print $1","$2}')
+		fi
+	fi
+
 	if [ -z "${USER_DATA_DIR}" ] && [ "${SECTION}" != "browser" ]
 	then
 		USER_DATA_DIR="/tmp/chromium-profile-${INSTANCE_INDEX}"
