@@ -37,6 +37,9 @@ gpu_mem_1024=128
 
 # New (in kernel) KMS driver
 dtoverlay=vc4-kms-v3d
+# Prevent firmware from injecting forced HDMI video= kernel args.
+# We want userspace (xrandr/openbox autostart) to own display layout/modes.
+disable_fw_kms_setup=1
 
 # Legacy approach, with fake KMS, VideoCore firmware selecting video modes
 #dtoverlay=vc4-fkms-v3d
